@@ -42,7 +42,7 @@ function validate(validatableInput: Validatable) {
 }
 
 // Autobind Decorator
-function AutobindFactory() {
+function Autobind() {
 	return function autobind(
 		_target: object,
 		_methodName: string,
@@ -58,6 +58,40 @@ function AutobindFactory() {
 		};
 		return adjustedDescriptor;
 	};
+}
+
+class ProjectList {
+	public templateElement: HTMLTemplateElement;
+	public hostElement: HTMLDivElement;
+	public element: HTMLElement;
+
+	constructor(private type: "active" | "finished") {
+		this.templateElement = document.getElementById(
+			"project-list",
+		)! as HTMLTemplateElement;
+		this.hostElement = document.getElementById("app")! as HTMLDivElement;
+
+		const importedNode = document.importNode(
+			this.templateElement.content,
+			true,
+		);
+		this.element = importedNode.firstElementChild as HTMLElement;
+		this.element.id = `${this.type}-projects`;
+		this.attach();
+		this.renderContent();
+	}
+
+	private attach() {
+		this.hostElement.insertAdjacentElement("beforeend", this.element);
+	}
+
+	private renderContent() {
+		const listId = `${this.type}-project-list`;
+		this.element.querySelector("ul")!.id = listId;
+		this.element.querySelector(
+			"h2",
+		)!.textContent = `${this.type.toUpperCase()} PROJECTS`;
+	}
 }
 
 class ProjectInput {
@@ -87,7 +121,7 @@ class ProjectInput {
 		this.attach();
 	}
 
-	@AutobindFactory()
+	@Autobind()
 	private configure() {
 		this.mainFormElement.addEventListener("submit", this.submitHandler);
 	}
@@ -130,7 +164,7 @@ class ProjectInput {
 		}
 	}
 
-	@AutobindFactory()
+	@Autobind()
 	private submitHandler(event: Event) {
 		event?.preventDefault;
 		const userInput = this.gatherUserInput();
@@ -160,3 +194,5 @@ class ProjectInput {
 }
 
 const projectInput = new ProjectInput();
+const activeProjectList = new ProjectList("active");
+const finishedProjectList = new ProjectList("finished");
