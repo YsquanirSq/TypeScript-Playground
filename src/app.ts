@@ -1,8 +1,8 @@
 // Autobind Decorator
 function AutobindFactory() {
 	return function autobind(
-		target: object,
-		methodName: string,
+		_target: object,
+		_methodName: string,
 		descriptor: PropertyDescriptor,
 	) {
 		const originalMethod = descriptor.value;
@@ -49,9 +49,40 @@ class ProjectInput {
 		this.mainFormElement.addEventListener("submit", this.submitHandler);
 	}
 
+	private gatherUserInput(): [string, string, number] | void {
+		const titleInput = this.titleInputElement.value;
+		const descriptionInput = this.descriptionInputElement.value;
+		const peopleInput = this.peopleInputElement.value;
+
+		if (
+			titleInput.trim().length === 0 ||
+			descriptionInput.trim().length === 0 ||
+			peopleInput.trim().length === 0
+		) {
+			alert("Invalid input, please try again!");
+			return;
+		} else {
+			return [titleInput, descriptionInput, +peopleInput];
+		}
+	}
+
+	@AutobindFactory()
 	private submitHandler(event: Event) {
 		event?.preventDefault;
+		const userInput = this.gatherUserInput();
+
+		if (Array.isArray(userInput)) {
+			const [title, description, people] = userInput;
+			console.log(title, description, people);
+		}
+		this.clearInputs();
 		console.log("Handling a received 'submit' handler.");
+	}
+
+	private clearInputs() {
+		this.titleInputElement.value = "";
+		this.descriptionInputElement.value = "";
+		this.peopleInputElement.value = "";
 	}
 
 	private attach() {
