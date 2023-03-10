@@ -237,7 +237,7 @@ class ProjectInput {
 
 	@Autobind()
 	private submitHandler(event: Event) {
-		event?.preventDefault;
+		event.preventDefault();
 		const userInput = this.gatherUserInput();
 
 		if (Array.isArray(userInput)) {
