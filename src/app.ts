@@ -8,27 +8,44 @@ class Project {
 		public id: string,
 		public title: string,
 		public description: string,
-		public numberOfPeople: number,
+		protected numberOfPeople: number,
 		public status: ProjectStatus,
 	) {}
+
+	get peopleInProjectAsString() {
+		if (this.numberOfPeople === 0) {
+			return "No people assigned.";
+		}
+		if (this.numberOfPeople === 1) {
+			return "One person assigned.";
+		} else {
+			return `${this.numberOfPeople.toString()} persons assigned`;
+		}
+	}
 }
 
-class ProjectState {
-	private listeners: Function[] = [];
+type Listener<T> = (items: T[]) => void;
+
+class State<T> {
+	protected listeners: Listener<T>[] = [];
+	public addListener(listenerFunction: Listener<T>) {
+		this.listeners.push(listenerFunction);
+	}
+}
+
+class ProjectState extends State<Project> {
 	private projects: Project[] = [];
 	private static instance: ProjectState;
 
-	private constructor() {}
+	private constructor() {
+		super();
+	}
 
 	public static getInstance() {
 		if (!this.instance) {
 			this.instance = new ProjectState();
 		}
 		return this.instance;
-	}
-
-	public addListener(listenerFunction: Function) {
-		this.listeners.push(listenerFunction);
 	}
 
 	public addProject(
@@ -44,7 +61,10 @@ class ProjectState {
 			ProjectStatus.active,
 		);
 		this.projects.push(newProject);
+		this.notifyListeners();
+	}
 
+	private notifyListeners() {
 		// Call all the listeners of the project state
 		for (const listenerFunction of this.listeners) {
 			listenerFunction(this.projects.slice());
@@ -153,6 +173,26 @@ abstract class Component<T extends HTMLElement, U extends HTMLElement> {
 	abstract renderContent(): void;
 }
 
+class ProjectItem extends Component<HTMLUListElement, HTMLLIElement> {
+	private project: Project;
+	constructor(hostElementId: string, project: Project) {
+		super("single-project", hostElementId, "beforeend", project.id);
+		this.project = project;
+
+		this.renderContent();
+	}
+
+	configure(): void {
+		throw new Error("Method not implemented.");
+	}
+	renderContent(): void {
+		this.element.querySelector("h2")!.textContent = this.project.title;
+		this.element.querySelector("h3")!.textContent =
+			this.project.peopleInProjectAsString;
+		this.element.querySelector("p")!.textContent = this.project.description;
+	}
+}
+
 class ProjectList extends Component<HTMLDivElement, HTMLElement> {
 	private listId: string;
 	private assignedProjects: Project[];
@@ -195,9 +235,7 @@ class ProjectList extends Component<HTMLDivElement, HTMLElement> {
 		)! as HTMLUListElement;
 		listElement.innerHTML = "";
 		for (const project of this.assignedProjects) {
-			const listItem = document.createElement("li");
-			listItem.innerText = project.title;
-			listElement.appendChild(listItem);
+			new ProjectItem(this.element.querySelector("ul")!.id, project);
 		}
 	}
 }
