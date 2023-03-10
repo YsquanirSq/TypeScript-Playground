@@ -116,45 +116,72 @@ function Autobind() {
 	};
 }
 
-class ProjectList {
+// Component Base Class
+abstract class Component<T extends HTMLElement, U extends HTMLElement> {
 	public templateElement: HTMLTemplateElement;
-	public hostElement: HTMLDivElement;
-	public element: HTMLElement;
-	private listId: string;
-	private assignedProjects: Project[];
+	public hostElement: T;
+	public element: U;
 
-	constructor(private type: ProjectStatus) {
+	constructor(
+		templateId: string,
+		hostElementId: string,
+		insertPosition: InsertPosition,
+		newElementId?: string,
+	) {
 		this.templateElement = document.getElementById(
-			"project-list",
+			templateId,
 		)! as HTMLTemplateElement;
-		this.hostElement = document.getElementById("app")! as HTMLDivElement;
+		this.hostElement = document.getElementById(hostElementId)! as T;
 
 		const importedNode = document.importNode(
 			this.templateElement.content,
 			true,
 		);
-		this.element = importedNode.firstElementChild as HTMLElement;
-		this.element.id = `${this.type}-projects`;
+		this.element = importedNode.firstElementChild as U;
+		if (newElementId) {
+			this.element.id = newElementId;
+		}
+
+		this.attach(insertPosition);
+	}
+
+	private attach(insertPosition: InsertPosition) {
+		this.hostElement.insertAdjacentElement(insertPosition, this.element);
+	}
+
+	abstract configure(): void;
+	abstract renderContent(): void;
+}
+
+class ProjectList extends Component<HTMLDivElement, HTMLElement> {
+	private listId: string;
+	private assignedProjects: Project[];
+
+	constructor(private type: ProjectStatus) {
+		super(
+			"project-list",
+			"app",
+			"beforeend",
+			`${ProjectStatus[type].toString()}-project-list`,
+		);
 
 		this.listId = "";
 		this.assignedProjects = [];
 
+		this.configure();
+		this.renderContent();
+	}
+
+	configure(): void {
 		projectState.addListener((projects: Project[]) => {
 			this.assignedProjects = projects.filter((p) => {
 				return p.status === this.type;
 			});
 			this.renderProjects();
 		});
-
-		this.attach();
-		this.renderContent();
 	}
 
-	private attach() {
-		this.hostElement.insertAdjacentElement("beforeend", this.element);
-	}
-
-	private renderContent() {
+	renderContent() {
 		this.listId = `${this.type}-project-list`;
 		this.element.querySelector("ul")!.id = this.listId;
 		this.element.querySelector("h2")!.textContent = `${ProjectStatus[
@@ -175,36 +202,28 @@ class ProjectList {
 	}
 }
 
-class ProjectInput {
-	public template: HTMLTemplateElement;
-	public hostElement: HTMLElement;
-	public mainFormElement: HTMLElement;
-
+class ProjectInput extends Component<HTMLDivElement, HTMLFormElement> {
 	public titleInputElement: HTMLInputElement;
 	public descriptionInputElement: HTMLInputElement;
 	public peopleInputElement: HTMLInputElement;
 
 	constructor() {
-		this.template = document.getElementById(
-			"project-input",
-		)! as HTMLTemplateElement;
-		this.hostElement = document.getElementById("app")! as HTMLDivElement;
+		super("project-input", "app", "afterbegin", "user-input");
 
-		const importedNode = document.importNode(this.template.content, true);
-		this.mainFormElement = importedNode.firstElementChild as HTMLFormElement;
-
-		this.titleInputElement = this.mainFormElement.querySelector("#title")!;
-		this.descriptionInputElement =
-			this.mainFormElement.querySelector("#description")!;
-		this.peopleInputElement = this.mainFormElement.querySelector("#people")!;
+		this.titleInputElement = this.element.querySelector("#title")!;
+		this.descriptionInputElement = this.element.querySelector("#description")!;
+		this.peopleInputElement = this.element.querySelector("#people")!;
 
 		this.configure();
-		this.attach();
 	}
 
 	@Autobind()
-	private configure() {
-		this.mainFormElement.addEventListener("submit", this.submitHandler);
+	configure() {
+		this.element.addEventListener("submit", this.submitHandler);
+	}
+
+	renderContent(): void {
+		throw new Error("Method not implemented.");
 	}
 
 	private gatherUserInput(): [string, string, number] | void {
@@ -263,15 +282,6 @@ class ProjectInput {
 		this.titleInputElement.value = "";
 		this.descriptionInputElement.value = "";
 		this.peopleInputElement.value = "";
-	}
-
-	private attach() {
-		if (this.mainFormElement) {
-			this.hostElement.insertAdjacentElement(
-				"afterbegin",
-				this.mainFormElement,
-			);
-		}
 	}
 }
 
