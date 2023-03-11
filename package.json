@@ -3,5 +3,17 @@
   "version": "1.0.0",
   "main": "index.js",
   "author": "Vaclav Skarka",
-  "license": "MIT"
+  "license": "MIT",
+  "scripts": {
+    "start": "webpack-dev-server",
+    "build": "webpack"
+  },
+  "devDependencies": {
+    "lite-server": "^2.6.1",
+    "ts-loader": "^9.4.2",
+    "typescript": "^4.9.5",
+    "webpack": "^5.76.1",
+    "webpack-cli": "^5.0.1",
+    "webpack-dev-server": "^4.11.1"
+  }
 }
