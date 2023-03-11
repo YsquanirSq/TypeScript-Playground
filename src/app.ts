@@ -1,3 +1,15 @@
+// Drag & Drop Interfaces
+interface Draggable {
+	dragStartHandler(event: DragEvent): void;
+	dragEndHandler(event: DragEvent): void;
+}
+
+interface DragTarget {
+	dragOverHandler(event: DragEvent): void;
+	dropHandler(event: DragEvent): void;
+	dragLeaveHandler(event: DragEvent): void;
+}
+
 enum ProjectStatus {
 	active,
 	finished,
@@ -54,7 +66,7 @@ class ProjectState extends State<Project> {
 		numberOfPeople: number,
 	) {
 		const newProject = new Project(
-			Math.random.toString(),
+			Math.random().toString(),
 			title,
 			description,
 			numberOfPeople,
@@ -62,6 +74,14 @@ class ProjectState extends State<Project> {
 		);
 		this.projects.push(newProject);
 		this.notifyListeners();
+	}
+
+	public moveProject(projectId: string, newStatus: ProjectStatus) {
+		const project = this.projects.find((project) => project.id === projectId);
+		if (project && project.status !== newStatus) {
+			project.status = newStatus;
+			this.notifyListeners();
+		}
 	}
 
 	private notifyListeners() {
@@ -173,17 +193,30 @@ abstract class Component<T extends HTMLElement, U extends HTMLElement> {
 	abstract renderContent(): void;
 }
 
-class ProjectItem extends Component<HTMLUListElement, HTMLLIElement> {
+class ProjectItem
+	extends Component<HTMLUListElement, HTMLLIElement>
+	implements Draggable
+{
 	private project: Project;
 	constructor(hostElementId: string, project: Project) {
 		super("single-project", hostElementId, "beforeend", project.id);
 		this.project = project;
 
+		this.configure();
 		this.renderContent();
+	}
+	@Autobind()
+	dragStartHandler(event: DragEvent): void {
+		event.dataTransfer!.setData("text/plain", this.project.id);
+		event.dataTransfer!.effectAllowed = "move";
+	}
+	dragEndHandler(event: DragEvent): void {
+		return; //not implemented
 	}
 
 	configure(): void {
-		throw new Error("Method not implemented.");
+		this.element.addEventListener("dragstart", this.dragStartHandler);
+		this.element.addEventListener("dragend", this.dragEndHandler);
 	}
 	renderContent(): void {
 		this.element.querySelector("h2")!.textContent = this.project.title;
@@ -193,7 +226,10 @@ class ProjectItem extends Component<HTMLUListElement, HTMLLIElement> {
 	}
 }
 
-class ProjectList extends Component<HTMLDivElement, HTMLElement> {
+class ProjectList
+	extends Component<HTMLDivElement, HTMLElement>
+	implements DragTarget
+{
 	private listId: string;
 	private assignedProjects: Project[];
 
@@ -202,7 +238,7 @@ class ProjectList extends Component<HTMLDivElement, HTMLElement> {
 			"project-list",
 			"app",
 			"beforeend",
-			`${ProjectStatus[type].toString()}-project-list`,
+			`${ProjectStatus[type].toString()}-projects`,
 		);
 
 		this.listId = "";
@@ -212,6 +248,28 @@ class ProjectList extends Component<HTMLDivElement, HTMLElement> {
 		this.renderContent();
 	}
 
+	@Autobind()
+	dragOverHandler(event: DragEvent): void {
+		if (event.dataTransfer && event.dataTransfer.types[0] === "text/plain") {
+			event.preventDefault();
+			const listEl = this.element.querySelector("ul")!;
+			listEl.classList.add("droppable");
+		}
+	}
+	@Autobind()
+	dropHandler(event: DragEvent): void {
+		const projectId = event.dataTransfer?.getData("text/plain");
+		if (projectId) {
+			projectState.moveProject(projectId, this.type);
+		}
+	}
+
+	@Autobind()
+	dragLeaveHandler(event: DragEvent): void {
+		const listEl = this.element.querySelector("ul")!;
+		listEl.classList.remove("droppable");
+	}
+
 	configure(): void {
 		projectState.addListener((projects: Project[]) => {
 			this.assignedProjects = projects.filter((p) => {
@@ -219,6 +277,10 @@ class ProjectList extends Component<HTMLDivElement, HTMLElement> {
 			});
 			this.renderProjects();
 		});
+
+		this.element.addEventListener("dragover", this.dragOverHandler);
+		this.element.addEventListener("dragleave", this.dragLeaveHandler);
+		this.element.addEventListener("drop", this.dropHandler);
 	}
 
 	renderContent() {
@@ -310,10 +372,8 @@ class ProjectInput extends Component<HTMLDivElement, HTMLFormElement> {
 		if (Array.isArray(userInput)) {
 			const [title, description, people] = userInput;
 			projectState.addProject(title, description, people);
-			console.log(title, description, people);
 		}
 		this.clearInputs();
-		console.log("Handling a received 'submit' handler.");
 	}
 
 	private clearInputs() {
